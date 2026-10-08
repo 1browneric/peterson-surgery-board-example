@@ -11,7 +11,7 @@
 /* Layout: navy masthead, then one working surface that swaps between a month calendar and a day's case list; patients expand in place. */
 :root{
   --bg:#ece8e1; --surface:#ffffff; --ink:#10204d; --muted:#4f5d80; --line:#d3ccbe;
-  --head-bg:#10204d; --head-fg:#ffffff; --gold:#d7be87;
+  --head-bg:#10204d; --head-fg:#ffffff; --head-line:#4b669a; --gold:#d7be87;
   --gold-soft:#efe2c3; --gold-ink:#5a4410;
   --open:#4b669a; --open-soft:#c1d2f3; --open-ink:#13255a;
   --off:#d9d3c7; --off-ink:#66666e; --sel-bg:#10204d; --sel-fg:#ffffff;
@@ -19,13 +19,13 @@
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
   --bg:#0b1739; --surface:#13255a; --ink:#eef1fa; --muted:#a9b4d2; --line:#2c3f7a;
-  --head-bg:#0e1d47; --head-fg:#ffffff; --gold:#d7be87;
+  --head-bg:#0e1d47; --head-fg:#ffffff; --head-line:#4b669a; --gold:#d7be87;
   --gold-soft:#4a3f22; --gold-ink:#f2dfb2;
   --open:#c1d2f3; --open-soft:#2f4780; --open-ink:#c1d2f3;
   --off:#3b4b85; --off-ink:#c3cae0; --sel-bg:#d7be87; --sel-fg:#10204d; color-scheme:dark } }
 :root[data-theme="dark"]{
   --bg:#0b1739; --surface:#13255a; --ink:#eef1fa; --muted:#a9b4d2; --line:#2c3f7a;
-  --head-bg:#0e1d47; --head-fg:#ffffff; --gold:#d7be87;
+  --head-bg:#0e1d47; --head-fg:#ffffff; --head-line:#4b669a; --gold:#d7be87;
   --gold-soft:#4a3f22; --gold-ink:#f2dfb2;
   --open:#c1d2f3; --open-soft:#2f4780; --open-ink:#c1d2f3;
   --off:#3b4b85; --off-ink:#c3cae0; --sel-bg:#d7be87; --sel-fg:#10204d; color-scheme:dark }
@@ -69,6 +69,17 @@ h1{font-family:var(--display);font-size:26px;margin:0;font-weight:700;letter-spa
 .cal.loc{grid-template-columns:repeat(auto-fill,minmax(108px,1fr))}
 .cell .add{font-size:12.5px;font-weight:600;color:var(--open-ink);margin-top:auto}
 .err{color:var(--gold-ink);font-weight:600;flex-basis:100%}
+.mast .seg button{background:transparent;color:var(--head-fg);border-color:var(--head-line)}
+.mast .seg button[aria-pressed="true"]{background:var(--gold);color:var(--head-bg);border-color:var(--gold)}
+.tabrow{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:flex-end;justify-content:space-between;border-bottom:1px solid var(--line)}
+.tabs{display:flex;gap:24px}
+.tabs button{background:none;border:0;border-bottom:3px solid transparent;padding:6px 2px 10px;font-weight:600;font-size:17px;color:var(--muted);margin-bottom:-1px}
+.tabs button[aria-pressed="true"]{color:var(--ink);border-bottom-color:var(--gold)}
+.tabrow .act{margin-bottom:8px}
+.locs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.locs button{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;text-align:left;display:flex;flex-direction:column;gap:2px;min-width:0}
+.locs b{font-weight:600}.locs span{font-size:13.5px;color:var(--muted)}
+.locs button[aria-pressed="true"]{background:var(--sel-bg);border-color:var(--sel-bg);color:var(--sel-fg)}.locs button[aria-pressed="true"] span{color:inherit}
 .dow{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:0 4px}
 .cell{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px;min-height:104px;display:flex;flex-direction:column;gap:3px;text-align:left;min-width:0}
 .cell.blank{background:transparent;border-style:dashed;color:var(--muted)}
@@ -130,7 +141,8 @@ button.cell:hover{filter:brightness(.97)}
 .foot{font-size:13px;color:var(--muted)}
 
 @media (max-width:620px){
-  h1{font-size:22px} .next{grid-template-columns:1fr}
+  .monthnav{gap:4px} .monthnav h2{font-size:17px;min-width:8.6em} .monthnav .ghost{padding:8px 9px}
+  h1{font-size:22px} .locs{grid-template-columns:repeat(2,minmax(0,1fr))} .locs button:first-child{grid-column:1/-1}
   .cal{gap:4px} .cell{padding:6px 5px;min-height:98px;border-radius:8px}
   .cell .bg{font-size:17px;white-space:nowrap} .cell .bg small{font-size:11px} .cell .site{font-size:11px} .cell .st{font-size:11.5px}
   .pips i{width:6px;height:6px;border-width:1px}
@@ -143,11 +155,7 @@ button.cell:hover{filter:brightness(.97)}
 </head>
 <body>
 
-<header class="mast"><div class="mast-in">
-  <div class="brand"><span class="eyebrow">Blake E. Peterson, MD</span><h1>Surgery Board</h1></div>
-  <span class="sample">Sample patients, not real</span>
-</div></header>
-<main class="wrap" id="app"></main>
+<div id="app"></div>
 
 <script>
 const TODAY='2026-10-08';
@@ -209,7 +217,7 @@ function patients(d){
 const caseTime=i=>{const m=450+i*55,h=Math.floor(m/60);return ((h+11)%12+1)+':'+String(m%60).padStart(2,'0')+(h<12?' a.m.':' p.m.')};
 const dueIso=(p,it)=>{const x=pd(p.day);x.setDate(x.getDate()-it.n);return iso(x)};
 const late=(p,it)=>!it.done&&dueIso(p,it)<TODAY;
-const ROLES={office:{n:'Office and scheduling',g:['Clearance','Patient','Office','Implant'],list:'Overdue'},surgery:{n:'Surgery team',g:['Clearance','Patient','Implant']},zimmer:{n:'Zimmer',g:['Implant'],list:'Implant list'}};
+const ROLES={office:{n:'Office and scheduling',g:['Clearance','Patient','Office','Implant']},surgery:{n:'Surgery team',g:['Clearance','Patient','Implant']},zimmer:{n:'Zimmer',g:['Implant'],list:'Implant list'}};
 const S={page:'cal',month:'2026-10',iso:null,role:'office',site:'all',open:{},booking:false,msg:'',adding:null,err:''};
 const vis=p=>p.items.filter(i=>ROLES[S.role].g.includes(i.g));
 const left=p=>vis(p).filter(i=>!i.done).length;
@@ -221,6 +229,7 @@ const tally=ps=>{const t={};ps.forEach(p=>(t[p.system]=t[p.system]||[]).push(p))
 
 const LEG='<div class="legend"><span><i class="sw open"></i>Open</span><span><i class="sw full"></i>Full</span><span><i class="sw off"></i>No cases</span><span class="num">Booked / goal</span></div>';
 function viewCal(){
+  const AB=S.role==='office'?'<button class="act" data-newcase="">Add case</button>':'';
   const next=['N','S','M'].filter(k=>S.site==='all'||k===S.site).map(k=>{const d=KEYS.map(x=>DAYS[x]).find(d=>d.site===k&&!d.off&&d.iso>=TODAY&&d.booked<d.goal);
     return d?'<button data-day="'+d.iso+'"><b>'+SITES[k].n+'</b><span class="num">'+DOW[pd(d.iso).getDay()].slice(0,3)+', '+shortDate(d.iso)+'</span><span class="o num">'+(d.goal-d.booked)+' open</span></button>':''}).join('');
   const months=['2026-10','2026-11','2026-12','2027-01','2027-02','2027-03'];
@@ -233,7 +242,7 @@ function viewCal(){
     KEYS.filter(k=>DAYS[k].site===S.site).forEach(k=>{const d=DAYS[k],st=status(d),t=k===TODAY?' today':'',dn='<span class="dn num">'+DOW[pd(k).getDay()].slice(0,3)+' '+shortDate(k)+'</span>';
       if(d.off){cells+='<div class="cell off'+t+'">'+dn+'<span class="st">'+d.note+'</span></div>';return}
       cells+='<button class="cell '+st.k+(k<TODAY?' past':'')+t+'" data-day="'+k+'" aria-label="'+longDate(k)+', '+d.booked+' booked of '+d.goal+', '+st.t+'">'+dn+(d.note?'<span class="site">'+d.note+'</span>':'')+'<span class="bg num">'+d.booked+'<small> / '+d.goal+'</small></span>'+pips(d)+'<span class="st">'+(k<TODAY?'Done':st.t)+'</span></button>'});
-    return (next?'<div class="next"><span class="lab">Next open</span>'+next+'</div>':'')+'<div class="bar"><div class="lab">'+SITES[S.site].f+' &middot; October 2026 to March 2027</div>'+LEG+'</div><div class="cal loc">'+cells+'</div>'+(cells?'':'<div class="slot">No surgery days in the October 7, 2026 snapshot</div>');
+    return '<div class="bar"><div class="lab">'+SITES[S.site].f+' &middot; October 2026 to March 2027</div>'+AB+'</div><div class="cal loc">'+cells+'</div>'+(cells?LEG:'<div class="slot">No surgery days in the October 7, 2026 snapshot</div>');
   }
   for(let w=0;w<6;w++){const mon=new Date(start);mon.setDate(start.getDate()+w*7);
     const wk=[0,1,2,3,4].map(i=>{const x=new Date(mon);x.setDate(mon.getDate()+i);return x});
@@ -246,10 +255,8 @@ function viewCal(){
       cells+='<button class="cell '+st.k+past+t+'" data-day="'+k+'" aria-label="'+longDate(k)+', '+SITES[d.site].n+', '+d.booked+' booked of '+d.goal+', '+st.t+'"><span class="dn num">'+x.getDate()+'</span><span class="site">'+SITES[d.site].s+'</span><span class="bg num">'+d.booked+'<small> / '+d.goal+'</small></span>'+pips(d)+'<span class="st">'+(k<TODAY?'Done':st.t)+'</span></button>';
     });
   }
-  return (next?'<div class="next"><span class="lab">Next open</span>'+next+'</div>':'')+''+
-   '<div class="bar"><div class="monthnav"><button class="ghost" data-month="'+(months[mi-1]||'')+'" aria-label="Previous month"'+(mi>0?'':' disabled')+'>&#8592;</button><h2>'+MON[+S.month.slice(5)-1]+' '+S.month.slice(0,4)+'</h2><button class="ghost" data-month="'+(months[mi+1]||'')+'" aria-label="Next month"'+(mi<months.length-1?'':' disabled')+'>&#8594;</button></div>'+
-   LEG+'</div>'+
-   '<div class="cal">'+['Mon','Tue','Wed','Thu','Fri'].map(d=>'<div class="dow">'+d+'</div>').join('')+cells+'</div>';
+  return '<div class="bar"><div class="monthnav"><button class="ghost" data-month="'+(months[mi-1]||'')+'" aria-label="Previous month"'+(mi>0?'':' disabled')+'>&#8592;</button><h2>'+MON[+S.month.slice(5)-1]+' '+S.month.slice(0,4)+'</h2><button class="ghost" data-month="'+(months[mi+1]||'')+'" aria-label="Next month"'+(mi<months.length-1?'':' disabled')+'>&#8594;</button></div>'+AB+'</div>'+
+   '<div class="cal">'+['Mon','Tue','Wed','Thu','Fri'].map(d=>'<div class="dow">'+d+'</div>').join('')+cells+'</div>'+LEG;
 }
 
 function viewList(){
@@ -267,7 +274,7 @@ function viewDay(){
   const ready=ps.filter(p=>!left(p)).length, z=S.role==='zimmer', off=S.role==='office', sx=S.role==='surgery';
   const rows=ps.map((p,ix0)=>{const n=left(p),op=!!S.open[p.id];
     const groups=ROLES[S.role].g.map(g=>{const its=p.items.map((it,ix)=>[it,ix]).filter(([it])=>it.g===g);if(!its.length)return '';
-      return '<div class="stack"><span class="lab">'+g+'</span><div class="chk">'+its.map(([it,ix])=>{const inner='<span class="box">'+(it.done?'&#10003;':'')+'</span><span>'+it.label+'</span><span class="due">'+(it.done?'Done':(late(p,it)?'Overdue ':'Due ')+shortDate(dueIso(p,it)))+'</span>';
+      return '<div class="stack"><span class="lab">'+g+'</span><div class="chk">'+its.map(([it,ix])=>{const inner='<span class="box">'+(it.done?'&#10003;':'')+'</span><span>'+it.label+'</span><span class="due">'+(it.done?'Done':'Due '+shortDate(dueIso(p,it)))+'</span>';
         return off?'<button class="'+(it.done?'done':'')+'" data-tog="'+p.id+'|'+ix+'" aria-pressed="'+it.done+'">'+inner+'</button>':'<div class="ro '+(it.done?'done':'')+'">'+inner+'</div>'}).join('')+'</div></div>'}).join('');
     const f=(a,b,c)=>'<div><span>'+a+'</span><b'+(c?' class="num"':'')+'>'+b+'</b></div>';
     const facts='<div class="stack"><span class="lab">Case</span><div class="facts">'+f('Procedure',p.proc)+f('Implant',p.system)+f('Planned sizes',p.sizes,1)+f('Robot',p.robot)+
@@ -292,15 +299,18 @@ function viewDay(){
 
 function render(){
   const roles=Object.entries(ROLES).map(([k,r])=>'<button data-role="'+k+'" aria-pressed="'+(k===S.role)+'">'+r.n+'</button>').join('');
-  const locs=[['all','All locations'],['N','Northland'],['S','St. Joseph'],['M','Mosaic'],['L','Saint Luke North']].map(([k,n])=>'<button data-site="'+k+'" aria-pressed="'+(k===S.site)+'">'+n+'</button>').join('');
+  const up=upcoming();
+  const locs=[['all','All locations'],['N','Northland'],['S','St. Joseph'],['M','Mosaic'],['L','Saint Luke North']].map(([k,n])=>{const d=up.find(d=>(k==='all'||d.site===k)&&d.booked<d.goal);
+    return '<button data-site="'+k+'" aria-pressed="'+(k===S.site)+'"><b>'+n+'</b><span class="num">'+(d?'Next open '+DOW[pd(d.iso).getDay()].slice(0,3)+', '+shortDate(d.iso):'No open days')+'</span></button>'}).join('');
   const R=ROLES[S.role], can=S.role==='office'?'Can book, move and check off':'Read only';
-  const pages=R.list?'<div class="seg" role="group" aria-label="Page"><button data-page="cal" aria-pressed="'+(S.page!=='list')+'">Calendar</button><button data-page="list" aria-pressed="'+(S.page==='list')+'">'+R.list+(S.role==='office'?' <span class="num">('+overdue().length+')</span>':'')+'</button></div>':'';
+  const pages=R.list?'<div class="tabs" role="group" aria-label="Page"><button data-page="cal" aria-pressed="'+(S.page!=='list')+'">Calendar</button><button data-page="list" aria-pressed="'+(S.page==='list')+'">'+R.list+(S.role==='office'?' <span class="num">('+overdue().length+')</span>':'')+'</button></div>':'';
   const roleOpts=Object.entries(ROLES).map(([k,r])=>'<option value="'+k+'"'+(k===S.role?' selected':'')+'>'+r.n+'</option>').join('');
   const locOpts=[['all','All locations'],['N','Northland'],['S','St. Joseph'],['M','Mosaic'],['L','Saint Luke North']].map(([k,n])=>'<option value="'+k+'"'+(k===S.site?' selected':'')+'>'+n+'</option>').join('');
   const a=S.adding, addBtn=S.role==='office'?'<button class="act" data-newcase="">Add case</button>':'';
   const addForm=a&&S.role==='office'?'<div class="slot"><span>Add case</span><div class="form"><input id="ad-date" type="date" aria-label="Surgery date" min="'+TODAY+'" max="2027-03-31" value="'+a.iso+'"><select id="ad-site" aria-label="Location"><option value="">Location</option>'+['N','S','M','L'].map(k=>'<option value="'+k+'"'+(a.site===k?' selected':'')+'>'+SITES[k].n+'</option>').join('')+'</select><input id="ad-name" type="text" placeholder="Patient name" aria-label="Patient name" autocomplete="off" value="'+esc(a.name)+'"><select id="ad-side" aria-label="Side"><option'+(a.side==='Right'?' selected':'')+'>Right</option><option'+(a.side==='Left'?' selected':'')+'>Left</option></select><select id="ad-proc" aria-label="Procedure">'+PROCS.map((p,ix)=>'<option value="'+ix+'"'+(a.proc===ix?' selected':'')+'>'+p[0]+'</option>').join('')+'</select><button class="act" data-addcase="1">Add case</button><button class="ghost" data-canceladd="1">Cancel</button></div>'+(S.err?'<div class="err" role="alert">'+S.err+'</div>':'')+'</div>':'';
-  document.getElementById('app').innerHTML='<div class="bar"><div class="form"><span class="pair"><label class="lab" for="sel-role">View</label><select id="sel-role">'+roleOpts+'</select></span><span class="pair"><label class="lab" for="sel-site">Location</label><select id="sel-site">'+locOpts+'</select></span></div><div class="form">'+pages+addBtn+'</div></div>'+addForm+
-   (S.page==='cal'?viewCal():S.page==='list'?viewList():viewDay())+'<div class="foot">Counts from the October 7, 2026 booking snapshot. Patients and checklists are made up for this example. Changes are not saved.</div>';
+  document.getElementById('app').innerHTML='<header class="mast"><div class="mast-in"><div class="brand"><span class="eyebrow">Blake E. Peterson, MD</span><span class="pair"><h1>Surgery Board</h1><span class="sample">Sample patients</span></span></div><div class="seg" role="group" aria-label="View as">'+roles+'</div></div></header><main class="wrap">'+
+   (pages?'<div class="tabrow">'+pages+'</div>':'')+(S.page==='day'?'':'<div class="locs" role="group" aria-label="Location">'+locs+'</div>')+addForm+
+   (S.page==='cal'?viewCal():S.page==='list'?viewList():viewDay())+'<div class="foot">Counts from the October 7, 2026 booking snapshot. Patients and checklists are made up for this example. Changes are not saved.</div></main>';
 }
 const find=id=>patients(DAYS[S.iso]).find(p=>p.id===id);
 const onClick=e=>{
