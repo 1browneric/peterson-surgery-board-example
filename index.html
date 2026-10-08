@@ -217,8 +217,8 @@ function patients(d){
 const caseTime=i=>{const m=450+i*55,h=Math.floor(m/60);return ((h+11)%12+1)+':'+String(m%60).padStart(2,'0')+(h<12?' a.m.':' p.m.')};
 const dueIso=(p,it)=>{const x=pd(p.day);x.setDate(x.getDate()-it.n);return iso(x)};
 const late=(p,it)=>!it.done&&dueIso(p,it)<TODAY;
-const ROLES={office:{n:'Office and scheduling',g:['Clearance','Patient','Office','Implant']},surgery:{n:'Surgery team',g:['Clearance','Patient','Implant']},zimmer:{n:'Zimmer',g:['Implant'],list:'Implant list'}};
-const S={page:'cal',month:'2026-10',iso:null,role:'office',site:'all',open:{},booking:false,msg:'',adding:null,err:''};
+const ROLES={osmc:{n:'OSMC',g:['Clearance','Patient','Office','Implant']},zimmer:{n:'Zimmer',g:['Implant'],list:'Implant list'}};
+const S={page:'cal',month:'2026-10',iso:null,role:'osmc',site:'all',open:{},booking:false,msg:'',adding:null,err:''};
 const vis=p=>p.items.filter(i=>ROLES[S.role].g.includes(i.g));
 const left=p=>vis(p).filter(i=>!i.done).length;
 const upcoming=()=>KEYS.filter(k=>k>=TODAY&&!DAYS[k].off).map(k=>DAYS[k]);
@@ -229,7 +229,7 @@ const tally=ps=>{const t={};ps.forEach(p=>(t[p.system]=t[p.system]||[]).push(p))
 
 const LEG='<div class="legend"><span><i class="sw open"></i>Open</span><span><i class="sw full"></i>Full</span><span><i class="sw off"></i>No cases</span><span class="num">Booked / goal</span></div>';
 function viewCal(){
-  const AB=S.role==='office'?'<button class="act" data-newcase="">Add case</button>':'';
+  const AB=S.role==='osmc'?'<button class="act" data-newcase="">Add case</button>':'';
   const next=['N','S','M'].filter(k=>S.site==='all'||k===S.site).map(k=>{const d=KEYS.map(x=>DAYS[x]).find(d=>d.site===k&&!d.off&&d.iso>=TODAY&&d.booked<d.goal);
     return d?'<button data-day="'+d.iso+'"><b>'+SITES[k].n+'</b><span class="num">'+DOW[pd(d.iso).getDay()].slice(0,3)+', '+shortDate(d.iso)+'</span><span class="o num">'+(d.goal-d.booked)+' open</span></button>':''}).join('');
   const months=['2026-10','2026-11','2026-12','2027-01','2027-02','2027-03'];
@@ -249,7 +249,7 @@ function viewCal(){
     if(!wk.some(x=>x.getMonth()===mo-1))continue;
     wk.forEach(x=>{const k=iso(x),d=DAYS[k],inM=x.getMonth()===mo-1,t=k===TODAY?' today':'';
       if(!inM){cells+='<div class="cell out"></div>';return}
-      if(!d){cells+=S.role==='office'&&k>=TODAY?'<button class="cell blank'+t+'" data-newcase="'+k+'" aria-label="Add case on '+longDate(k)+'"><span class="dn num">'+x.getDate()+'</span><span class="add">Add case</span></button>':'<div class="cell blank'+t+'"><span class="dn num">'+x.getDate()+'</span></div>';return}
+      if(!d){cells+=S.role==='osmc'&&k>=TODAY?'<button class="cell blank'+t+'" data-newcase="'+k+'" aria-label="Add case on '+longDate(k)+'"><span class="dn num">'+x.getDate()+'</span><span class="add">Add case</span></button>':'<div class="cell blank'+t+'"><span class="dn num">'+x.getDate()+'</span></div>';return}
       const st=status(d),past=k<TODAY?' past':'';
       if(d.off){cells+='<div class="cell off'+t+'"><span class="dn num">'+x.getDate()+'</span><span class="site">'+(d.site==='A'?'':SITES[d.site].s)+'</span><span class="st">'+d.note+'</span></div>';return}
       cells+='<button class="cell '+st.k+past+t+'" data-day="'+k+'" aria-label="'+longDate(k)+', '+SITES[d.site].n+', '+d.booked+' booked of '+d.goal+', '+st.t+'"><span class="dn num">'+x.getDate()+'</span><span class="site">'+SITES[d.site].s+'</span><span class="bg num">'+d.booked+'<small> / '+d.goal+'</small></span>'+pips(d)+'<span class="st">'+(k<TODAY?'Done':st.t)+'</span></button>';
@@ -260,7 +260,7 @@ function viewCal(){
 }
 
 function viewList(){
-  if(S.role==='office'){
+  if(S.role==='osmc'){
     const o=overdue();
     return '<div class="cases">'+(o.map(([d,p,l])=>'<button class="rowbtn" data-go="'+p.id+'|'+d.iso+'"><span class="stack"><span class="lab">Surgery '+shortDate(d.iso)+' &middot; '+SITES[d.site].n+'</span><span class="who">'+esc(p.name)+'</span><span class="proc">'+p.proc+'</span><span class="num">'+p.phone+'</span></span><span class="stack">'+l.map(it=>'<span class="due">'+it.label+' &middot; due '+shortDate(dueIso(p,it))+'</span>').join('')+'</span></button>').join('')||'<div class="slot">Nothing overdue</div>')+'</div>';
   }
@@ -271,7 +271,7 @@ function viewList(){
 
 function viewDay(){
   const d=DAYS[S.iso], ps=patients(d), st=status(d), live=KEYS.filter(k=>!DAYS[k].off&&inSite(DAYS[k])), i=live.indexOf(S.iso);
-  const ready=ps.filter(p=>!left(p)).length, z=S.role==='zimmer', off=S.role==='office', sx=S.role==='surgery';
+  const ready=ps.filter(p=>!left(p)).length, z=S.role==='zimmer', off=S.role==='osmc', sx=off;
   const rows=ps.map((p,ix0)=>{const n=left(p),op=!!S.open[p.id];
     const groups=ROLES[S.role].g.map(g=>{const its=p.items.map((it,ix)=>[it,ix]).filter(([it])=>it.g===g);if(!its.length)return '';
       return '<div class="stack"><span class="lab">'+g+'</span><div class="chk">'+its.map(([it,ix])=>{const inner='<span class="box">'+(it.done?'&#10003;':'')+'</span><span>'+it.label+'</span><span class="due">'+(it.done?'Done':'Due '+shortDate(dueIso(p,it)))+'</span>';
@@ -302,12 +302,12 @@ function render(){
   const up=upcoming();
   const locs=[['all','All locations'],['N','Northland'],['S','St. Joseph'],['M','Mosaic'],['L','Saint Luke North']].map(([k,n])=>{const d=up.find(d=>(k==='all'||d.site===k)&&d.booked<d.goal);
     return '<button data-site="'+k+'" aria-pressed="'+(k===S.site)+'"><b>'+n+'</b><span class="num">'+(d?'Next open '+DOW[pd(d.iso).getDay()].slice(0,3)+', '+shortDate(d.iso):'No open days')+'</span></button>'}).join('');
-  const R=ROLES[S.role], can=S.role==='office'?'Can book, move and check off':'Read only';
-  const pages=R.list?'<div class="tabs" role="group" aria-label="Page"><button data-page="cal" aria-pressed="'+(S.page!=='list')+'">Calendar</button><button data-page="list" aria-pressed="'+(S.page==='list')+'">'+R.list+(S.role==='office'?' <span class="num">('+overdue().length+')</span>':'')+'</button></div>':'';
+  const R=ROLES[S.role], can=S.role==='osmc'?'Can book, move and check off':'Read only';
+  const pages=R.list?'<div class="tabs" role="group" aria-label="Page"><button data-page="cal" aria-pressed="'+(S.page!=='list')+'">Calendar</button><button data-page="list" aria-pressed="'+(S.page==='list')+'">'+R.list+(S.role==='osmc'?' <span class="num">('+overdue().length+')</span>':'')+'</button></div>':'';
   const roleOpts=Object.entries(ROLES).map(([k,r])=>'<option value="'+k+'"'+(k===S.role?' selected':'')+'>'+r.n+'</option>').join('');
   const locOpts=[['all','All locations'],['N','Northland'],['S','St. Joseph'],['M','Mosaic'],['L','Saint Luke North']].map(([k,n])=>'<option value="'+k+'"'+(k===S.site?' selected':'')+'>'+n+'</option>').join('');
-  const a=S.adding, addBtn=S.role==='office'?'<button class="act" data-newcase="">Add case</button>':'';
-  const addForm=a&&S.role==='office'?'<div class="slot"><span>Add case</span><div class="form"><input id="ad-date" type="date" aria-label="Surgery date" min="'+TODAY+'" max="2027-03-31" value="'+a.iso+'"><select id="ad-site" aria-label="Location"><option value="">Location</option>'+['N','S','M','L'].map(k=>'<option value="'+k+'"'+(a.site===k?' selected':'')+'>'+SITES[k].n+'</option>').join('')+'</select><input id="ad-name" type="text" placeholder="Patient name" aria-label="Patient name" autocomplete="off" value="'+esc(a.name)+'"><select id="ad-side" aria-label="Side"><option'+(a.side==='Right'?' selected':'')+'>Right</option><option'+(a.side==='Left'?' selected':'')+'>Left</option></select><select id="ad-proc" aria-label="Procedure">'+PROCS.map((p,ix)=>'<option value="'+ix+'"'+(a.proc===ix?' selected':'')+'>'+p[0]+'</option>').join('')+'</select><button class="act" data-addcase="1">Add case</button><button class="ghost" data-canceladd="1">Cancel</button></div>'+(S.err?'<div class="err" role="alert">'+S.err+'</div>':'')+'</div>':'';
+  const a=S.adding, addBtn=S.role==='osmc'?'<button class="act" data-newcase="">Add case</button>':'';
+  const addForm=a&&S.role==='osmc'?'<div class="slot"><span>Add case</span><div class="form"><input id="ad-date" type="date" aria-label="Surgery date" min="'+TODAY+'" max="2027-03-31" value="'+a.iso+'"><select id="ad-site" aria-label="Location"><option value="">Location</option>'+['N','S','M','L'].map(k=>'<option value="'+k+'"'+(a.site===k?' selected':'')+'>'+SITES[k].n+'</option>').join('')+'</select><input id="ad-name" type="text" placeholder="Patient name" aria-label="Patient name" autocomplete="off" value="'+esc(a.name)+'"><select id="ad-side" aria-label="Side"><option'+(a.side==='Right'?' selected':'')+'>Right</option><option'+(a.side==='Left'?' selected':'')+'>Left</option></select><select id="ad-proc" aria-label="Procedure">'+PROCS.map((p,ix)=>'<option value="'+ix+'"'+(a.proc===ix?' selected':'')+'>'+p[0]+'</option>').join('')+'</select><button class="act" data-addcase="1">Add case</button><button class="ghost" data-canceladd="1">Cancel</button></div>'+(S.err?'<div class="err" role="alert">'+S.err+'</div>':'')+'</div>':'';
   document.getElementById('app').innerHTML='<header class="mast"><div class="mast-in"><div class="brand"><span class="eyebrow">Blake E. Peterson, MD</span><span class="pair"><h1>Surgery Board</h1><span class="sample">Sample patients</span></span></div><div class="seg" role="group" aria-label="View as">'+roles+'</div></div></header><main class="wrap">'+
    (pages?'<div class="tabrow">'+pages+'</div>':'')+(S.page==='day'?'':'<div class="locs" role="group" aria-label="Location">'+locs+'</div>')+addForm+
    (S.page==='cal'?viewCal():S.page==='list'?viewList():viewDay())+'<div class="foot">Counts from the October 7, 2026 booking snapshot. Patients and checklists are made up for this example. Changes are not saved.</div></main>';
