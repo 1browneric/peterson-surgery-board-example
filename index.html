@@ -159,7 +159,7 @@ button.cell:hover{filter:brightness(.97)}
 
 <script>
 const TODAY='2026-10-08';
-const SITES={N:{n:'Northland',s:'Northland Surgery Center',f:'Surgery Center of the Northland'},S:{n:'St. Joseph',s:'St. Joe Surgery Center',f:'Center for Outpatient Surgery'},M:{n:'Mosaic',s:'Mosaic Life Care',f:'Mosaic Life Care'},L:{n:"Saint Luke's North",s:"Saint Luke's North",f:"Saint Luke's North"},A:{n:'Add-on',s:'Add-on',f:'Added case'}};
+const SITES={N:{n:'Northland',s:'Northland Surgery Center',f:'Surgery Center of the Northland'},S:{n:'St. Joseph',s:'St. Joseph Surgery Center',f:'Center for Outpatient Surgery'},M:{n:'Mosaic',s:'Mosaic Life Care',f:'Mosaic Life Care'},L:{n:"Saint Luke's North",s:"Saint Luke's North",f:"Saint Luke's North"},A:{n:'Add-on',s:'Add-on',f:'Added case'}};
 const DAYS={};
 const add=(site,goal,rows)=>rows.forEach(r=>{const [d,b,x]=r;DAYS[d]={iso:d,site,goal:(x&&x.g)||goal,booked:b,note:x&&x.note,off:b===null}});
 const O={note:'Out of town'};
