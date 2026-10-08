@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<style>body{margin:0}</style>
+<title>Peterson Surgery Board</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: navy masthead, then one working surface that swaps between a month calendar and a day's case list; patients expand in place. */
+:root{
+  --bg:#ece8e1; --surface:#ffffff; --ink:#10204d; --muted:#4f5d80; --line:#d3ccbe;
+  --head-bg:#10204d; --head-fg:#ffffff; --gold:#d7be87;
+  --gold-soft:#efe2c3; --gold-ink:#5a4410;
+  --open:#4b669a; --open-soft:#c1d2f3; --open-ink:#13255a;
+  --off:#d9d3c7; --off-ink:#66666e; --sel-bg:#10204d; --sel-fg:#ffffff;
+  --display:"Syne","Trebuchet MS",sans-serif; --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0b1739; --surface:#13255a; --ink:#eef1fa; --muted:#a9b4d2; --line:#2c3f7a;
+  --head-bg:#0e1d47; --head-fg:#ffffff; --gold:#d7be87;
+  --gold-soft:#4a3f22; --gold-ink:#f2dfb2;
+  --open:#c1d2f3; --open-soft:#2f4780; --open-ink:#c1d2f3;
+  --off:#3b4b85; --off-ink:#c3cae0; --sel-bg:#d7be87; --sel-fg:#10204d; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#0b1739; --surface:#13255a; --ink:#eef1fa; --muted:#a9b4d2; --line:#2c3f7a;
+  --head-bg:#0e1d47; --head-fg:#ffffff; --gold:#d7be87;
+  --gold-soft:#4a3f22; --gold-ink:#f2dfb2;
+  --open:#c1d2f3; --open-soft:#2f4780; --open-ink:#c1d2f3;
+  --off:#3b4b85; --off-ink:#c3cae0; --sel-bg:#d7be87; --sel-fg:#10204d; color-scheme:dark }
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.4}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:3px solid var(--open);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+.mast{background:var(--head-bg);color:var(--head-fg);padding-block:18px;padding-inline:16px;border-bottom:3px solid var(--gold)}
+.mast-in,.wrap{max-width:1040px;margin-inline:auto}
+.mast-in{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;justify-content:space-between}
+.brand{display:flex;flex-direction:column;gap:2px}
+.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:600}
+h1{font-family:var(--display);font-size:26px;margin:0;font-weight:700;letter-spacing:-.01em}
+.sample{font-size:13px;border:1px solid var(--gold);color:var(--gold);padding:3px 10px;border-radius:99px;white-space:nowrap}
+
+.wrap{padding-block:18px 40px;padding-inline:16px;display:flex;flex-direction:column;gap:18px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{background:var(--surface);border:1px solid var(--line);padding:8px 14px;border-radius:8px;font-weight:500}
+.seg button[aria-pressed="true"]{background:var(--sel-bg);color:var(--sel-fg);border-color:var(--sel-bg)}
+.bar{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;justify-content:space-between}
+.lab{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.stack{display:flex;flex-direction:column;gap:6px}
+
+.next{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.next button{background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:6px 14px;text-align:left;display:flex;flex-wrap:wrap;gap:2px 8px;align-items:baseline;min-width:0}
+.next b{font-weight:600}
+.monthnav{display:flex;align-items:center;gap:8px}.monthnav h2{font-family:var(--display);font-size:22px;margin:0;min-width:10.5em;text-align:center}
+.pair{display:inline-flex;align-items:center;gap:8px;min-width:0}
+.next .o{color:var(--open-ink);font-weight:600}
+
+.legend{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:13px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:14px;height:14px;border-radius:3px;border:1px solid var(--line)}
+.sw.open{background:var(--open-soft);border-color:var(--open)} .sw.full{background:var(--gold-soft);border-color:var(--gold)}
+.sw.off,.cell.off{background:repeating-linear-gradient(135deg,var(--off) 0 6px,var(--surface) 6px 9px)}
+
+.cal{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.cal.loc{grid-template-columns:repeat(auto-fill,minmax(108px,1fr))}
+.cell .add{font-size:12.5px;font-weight:600;color:var(--open-ink);margin-top:auto}
+.err{color:var(--gold-ink);font-weight:600;flex-basis:100%}
+.dow{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:0 4px}
+.cell{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px;min-height:104px;display:flex;flex-direction:column;gap:3px;text-align:left;min-width:0}
+.cell.blank{background:transparent;border-style:dashed;color:var(--muted)}
+.cell.out{visibility:hidden}
+.cell .dn{font-size:13px;color:var(--muted);font-weight:500}
+.cell .site{font-size:12px;font-weight:600;letter-spacing:.02em;line-height:1.2}
+.cell .bg{font-family:var(--display);font-size:22px;font-weight:700;line-height:1.1}
+.cell .bg small{font-size:13px;font-weight:600;color:var(--muted);font-family:var(--body)}
+.cell .st{font-size:12.5px;font-weight:600;margin-top:auto}
+.cell.open{background:var(--open-soft);border-color:var(--open)} .cell.open .st{color:var(--open-ink)}
+.cell.full{background:var(--gold-soft);border-color:var(--gold)} .cell.full .st{color:var(--gold-ink)}
+.cell.off{color:var(--off-ink);border-color:var(--line)}
+.cell.past{opacity:.55}
+.cell.today{box-shadow:0 0 0 3px var(--ink)}
+button.cell:hover{filter:brightness(.97)}
+
+.pips{display:flex;gap:3px;flex-wrap:wrap}
+.pips i{width:9px;height:9px;border-radius:2px;border:1.5px solid var(--ink);opacity:.35}
+.pips i.on{background:var(--ink);opacity:1} .pips i.over{background:var(--gold);border-color:var(--gold-ink);opacity:1}
+
+.dayhead{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-wrap:wrap;gap:14px 28px;align-items:flex-end;justify-content:space-between}
+.dayhead h2{font-family:var(--display);font-size:24px;margin:0;text-wrap:balance}
+.stats{display:flex;flex-wrap:wrap;gap:8px 22px}
+.stat b{font-family:var(--display);font-size:20px}
+.navrow{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between}
+.ghost{background:transparent;border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-weight:500}
+.ghost[disabled]{opacity:.4;cursor:default}
+
+.cases{display:flex;flex-direction:column;gap:8px}
+.case{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.case>button{width:100%;background:none;border:0;padding:14px 16px;display:grid;grid-template-columns:88px minmax(0,1fr) auto 18px;gap:12px;align-items:center;text-align:left}
+.case .t{font-weight:600} .case .t small{display:block;color:var(--muted);font-weight:400;font-size:13px}
+.case .who{font-size:18px;font-weight:600} .case .proc{color:var(--muted);font-size:15px}
+.pill{font-size:14px;font-weight:600;padding:5px 11px;border-radius:99px;white-space:nowrap;border:1px solid}
+.pill.ready{background:var(--open-soft);color:var(--open-ink);border-color:var(--open)}
+.pill.todo{background:var(--gold-soft);color:var(--gold-ink);border-color:var(--gold)}
+.chev{transition:transform .15s;color:var(--muted)} [aria-expanded="true"] .chev{transform:rotate(90deg)}
+.detail{border-top:1px solid var(--line);padding:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px 28px}
+.facts{display:flex;flex-direction:column;gap:6px}
+.facts div{display:flex;justify-content:space-between;gap:12px;border-bottom:1px dotted var(--line);padding-bottom:5px}
+.facts span{color:var(--muted)} .facts b{font-weight:600;text-align:right}
+.chk{display:flex;flex-direction:column;gap:6px}
+.chk button{display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:10px;align-items:center;background:none;border:1px solid var(--line);border-radius:8px;padding:9px 10px;text-align:left}
+.box{width:22px;height:22px;border-radius:5px;border:2px solid var(--gold-ink);display:grid;place-items:center;font-size:14px;font-weight:700;line-height:1}
+.chk button.done .box{background:var(--open);border-color:var(--open);color:var(--surface)}
+.chk .due{font-size:13px;font-weight:600;color:var(--gold-ink)} .chk .done .due{color:var(--open-ink)}
+.slot{border:1px dashed var(--open);border-radius:12px;padding:14px 16px;color:var(--open-ink);font-weight:600;background:var(--open-soft)}
+
+.tag{font-size:12.5px;font-weight:600;border:1.5px solid var(--ink);border-radius:4px;padding:1px 6px;white-space:nowrap;align-self:flex-start}
+.chk .ro{display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:10px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:9px 10px}
+.chk .ro.done .box{background:var(--open);border-color:var(--open);color:var(--surface)}
+.slot{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between}
+.form{display:flex;flex-wrap:wrap;gap:8px;align-items:center;min-width:0}
+.form input,.form select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;max-width:100%;min-width:0}
+.act{background:var(--sel-bg);color:var(--sel-fg);border:1px solid var(--sel-bg);border-radius:8px;padding:8px 14px;font-weight:600}
+.msg{background:var(--open-soft);color:var(--open-ink);border:1px solid var(--open);border-radius:10px;padding:10px 14px;font-weight:600}
+.rowbtn{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px 24px;text-align:left;align-items:start}
+.rowbtn .who{font-size:18px;font-weight:600}.rowbtn .proc{color:var(--muted)}.rowbtn .due{color:var(--gold-ink);font-weight:600;font-size:14px}
+.foot{font-size:13px;color:var(--muted)}
+
+@media (max-width:620px){
+  h1{font-size:22px} .next{grid-template-columns:1fr}
+  .cal{gap:4px} .cell{padding:6px 5px;min-height:98px;border-radius:8px}
+  .cell .bg{font-size:17px;white-space:nowrap} .cell .bg small{font-size:11px} .cell .site{font-size:11px} .cell .st{font-size:11.5px}
+  .pips i{width:6px;height:6px;border-width:1px}
+  .case>button{grid-template-columns:minmax(0,1fr) 18px;row-gap:6px}
+  .case .t{grid-column:1/-1;display:flex;gap:8px;align-items:baseline} .case .t small{display:inline}
+  .case .pill{grid-column:1;justify-self:start;grid-row:3} .chev{grid-row:2;grid-column:2}
+}
+@media (prefers-reduced-motion:reduce){.chev{transition:none}}
+</style>
+</head>
+<body>
+
+<header class="mast"><div class="mast-in">
+  <div class="brand"><span class="eyebrow">Blake E. Peterson, MD</span><h1>Surgery Board</h1></div>
+  <span class="sample">Sample patients, not real</span>
+</div></header>
+<main class="wrap" id="app"></main>
+
+<script>
+const TODAY='2026-10-08';
+const SITES={N:{n:'Northland',s:'Northland Surgery Center',f:'Surgery Center of the Northland'},S:{n:'St. Joseph',s:'St. Joe Surgery Center',f:'Center for Outpatient Surgery'},M:{n:'Mosaic',s:'Mosaic Life Care',f:'Mosaic Life Care'},L:{n:'Saint Luke North',s:'Saint Luke North',f:'Saint Luke North'},A:{n:'Add-on',s:'Add-on',f:'Added case'}};
+const DAYS={};
+const add=(site,goal,rows)=>rows.forEach(r=>{const [d,b,x]=r;DAYS[d]={iso:d,site,goal:(x&&x.g)||goal,booked:b,note:x&&x.note,off:b===null}});
+const O={note:'Out of town'};
+add('N',6,[['2026-10-05',4,{g:4}],['2026-10-12',5,{g:5}],['2026-10-19',5,{g:5}],['2026-10-26',5,{g:5}],['2026-11-02',5,{g:5}],['2026-11-09',1,{g:5}],['2026-11-16',0,{g:5}],['2026-11-23',0],['2026-11-30',4],['2026-12-07',2],['2026-12-14',1],['2026-12-21',null,O],['2026-12-28',0],['2026-12-30',0,{g:7,note:'Extra day'}],['2027-01-04',0],['2027-01-11',0],['2027-01-18',null,O],['2027-01-25',0],['2027-02-01',0],['2027-02-08',0],['2027-02-15',0],['2027-02-22',0],['2027-03-01',null,O]]);
+add('S',10,[['2026-10-06',9],['2026-10-13',11],['2026-10-20',null,O],['2026-10-27',10],['2026-11-03',10],['2026-11-10',10],['2026-11-17',10],['2026-11-24',7],['2026-12-01',8],['2026-12-08',0],['2026-12-15',5],['2026-12-22',null,O],['2026-12-29',4],['2027-01-05',3],['2027-01-12',4],['2027-01-19',2],['2027-01-26',0],['2027-02-02',0],['2027-02-09',0],['2027-02-16',0],['2027-02-23',0]]);
+add('M',8,[['2026-10-08',8],['2026-10-15',6,{g:7,note:'Reduced goal'}],['2026-10-22',null,O],['2026-10-29',7,{g:7,note:'Reduced goal'}],['2026-11-05',null,O],['2026-11-12',8],['2026-11-19',8],['2026-11-26',null,{note:'Thanksgiving'}],['2026-12-03',4],['2026-12-10',3],['2026-12-17',2],['2026-12-24',null,{note:'Christmas Eve'}],['2026-12-31',1,{g:6,note:'Reduced goal'}],['2027-01-07',null,O],['2027-01-14',1],['2027-01-21',1],['2027-01-28',0],['2027-02-04',1],['2027-02-11',0],['2027-02-18',1],['2027-02-25',0]]);
+add('L',1,[['2026-10-16',1,{note:'Add-on'}]]);DAYS['2026-10-16'].addon=true;
+add('A',1,[['2026-10-21',null,O]]);
+const KEYS=Object.keys(DAYS).sort();
+
+const MON=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DOW=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const pd=iso=>{const [y,m,d]=iso.split('-').map(Number);return new Date(y,m-1,d)};
+const iso=dt=>dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+const longDate=i=>{const d=pd(i);return DOW[d.getDay()]+', '+MON[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear()};
+const shortDate=i=>{const d=pd(i);return MON[d.getMonth()].slice(0,3)+' '+d.getDate()};
+const status=d=>d.off?{k:'off',t:d.note}:d.booked>d.goal?{k:'full',t:(d.booked-d.goal)+' over goal'}:d.booked===d.goal?{k:'full',t:'Full'}:{k:'open',t:(d.goal-d.booked)+' open'};
+
+/* sample patients, generated the same way every load */
+function rng(seed){let a=seed>>>0;return()=>{a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const FIRST=['Harold','Marjorie','Dennis','Lorraine','Wayne','Phyllis','Gerald','Delores','Curtis','Nadine','Russell','Bernice','Leland','Arlene','Vernon','Rosalind','Clifton','Maxine','Elroy','Winifred'];
+const LAST=['Abernathy','Brockhaus','Castellan','Dunmore','Eisenhart','Fairbanks','Goldwater','Hathaway','Ingersoll','Jessup','Kirkbride','Lindqvist','Merriweather','Northcutt','Oglethorpe','Pemberton','Quarles','Ravenscroft','Stanhope','Thackeray'];
+const PROCS=[['Total knee replacement','Persona knee','ROSA'],['Total hip replacement, anterior','Taperloc stem, G7 cup','None'],['Partial knee replacement','Oxford partial knee','ROSA'],['Revision knee replacement','Persona Revision knee','None']];
+const PICK=[0,0,1,1,2,3];
+const NOTES=['Prefers calls after 3 p.m.','Daughter schedules for her','Text first, then call','Left voicemail October 6','Needs a ride arranged','Best reached on cell'];
+const ALG=['No known allergies','No known allergies','Penicillin','Sulfa','Latex','Codeine'];
+const CACHE={};let UID=0;
+function mk(d,r,p,o){
+  o=o||{};
+  const pr=PROCS[o.proc!=null?o.proc:PICK[Math.floor(r()*PICK.length)]], side=o.side||(r()<.5?'Right':'Left'), hip=/hip/.test(pr[0]), rev=/Revision/.test(pr[0]);
+  const it=(g,label,n)=>({g,label,done:r()<p,n});
+  const items=[it('Clearance','Pre-op labs and EKG',14),it('Clearance','Medical clearance from primary care',14)];
+  if(r()<.3)items.push(it('Clearance','Cardiology clearance',14));
+  items.push(it('Clearance','Dental clearance',21),it('Clearance','History and physical within 30 days',7),it('Patient','Joint class attended',10),it('Patient','Medication plan reviewed',7));
+  const thin=r()<.25;if(thin)items.push(it('Patient','Blood thinner hold confirmed',5));
+  items.push(it('Patient','Consent signed',7),it('Office','Insurance authorization',21),it('Implant','Implant confirmed with Zimmer',7));
+  if(pr[2]==='ROSA')items.push(it('Implant','ROSA imaging received',10));
+  const name=o.name||FIRST[Math.floor(r()*20)]+' '+LAST[Math.floor(r()*20)], parts=name.trim().split(/\s+/), days=(pd(d.iso)-pd(TODAY))/864e5, f=r();
+  return {id:'p'+(++UID),day:d.iso,name,ini:(parts[0][0]+'.'+parts[parts.length-1][0]+'.').toUpperCase(),age:52+Math.floor(r()*29),
+    phone:'(816) 555-01'+(10+Math.floor(r()*89)),note:o.name?'Booked today':NOTES[Math.floor(r()*NOTES.length)],allergy:ALG[Math.floor(r()*ALG.length)],
+    thin:thin?'Hold Eliquis 3 days before':'None',pos:hip?'Supine, Hana table':'Supine, leg holder',equip:rev?'Revision trays, C-arm':hip?'Hana table, C-arm':'ROSA robot, knee instruments',
+    flag:o.flag||(days>0&&days<15?(f<.15?'Late add':f<.27?'Implant changed':''):''),
+    proc:side+' '+pr[0].toLowerCase(),system:pr[1],robot:pr[2],
+    sizes:hip?'Stem '+(8+Math.floor(r()*8))+', cup '+(48+2*Math.floor(r()*6))+' mm, head 36 mm':'Femur '+(4+Math.floor(r()*7))+', tibia '+'CDEFGH'[Math.floor(r()*6)]+', poly 10 mm',
+    anes:hip?'Spinal':'Spinal with adductor canal block',items};
+}
+function patients(d){
+  if(CACHE[d.iso])return CACHE[d.iso];
+  const r=rng(Number(d.iso.replace(/-/g,''))), out=[], days=(pd(d.iso)-pd(TODAY))/864e5;
+  const p=days<=0?1:days<7?.95:days<21?.82:days<45?.5:.2;
+  for(let i=0;i<d.booked;i++)out.push(mk(d,r,p));
+  return CACHE[d.iso]=out;
+}
+const caseTime=i=>{const m=450+i*55,h=Math.floor(m/60);return ((h+11)%12+1)+':'+String(m%60).padStart(2,'0')+(h<12?' a.m.':' p.m.')};
+const dueIso=(p,it)=>{const x=pd(p.day);x.setDate(x.getDate()-it.n);return iso(x)};
+const late=(p,it)=>!it.done&&dueIso(p,it)<TODAY;
+const ROLES={office:{n:'Office and scheduling',g:['Clearance','Patient','Office','Implant'],list:'Overdue'},surgery:{n:'Surgery team',g:['Clearance','Patient','Implant']},zimmer:{n:'Zimmer',g:['Implant'],list:'Implant list'}};
+const S={page:'cal',month:'2026-10',iso:null,role:'office',site:'all',open:{},booking:false,msg:'',adding:null,err:''};
+const vis=p=>p.items.filter(i=>ROLES[S.role].g.includes(i.g));
+const left=p=>vis(p).filter(i=>!i.done).length;
+const upcoming=()=>KEYS.filter(k=>k>=TODAY&&!DAYS[k].off).map(k=>DAYS[k]);
+const inSite=d=>S.site==='all'||d.site===S.site;
+const overdue=()=>{const o=[];upcoming().filter(inSite).forEach(d=>patients(d).forEach(p=>{const l=p.items.filter(it=>late(p,it));if(l.length)o.push([d,p,l])}));return o};
+const pips=d=>{let h='';const n=Math.max(d.goal,d.booked);for(let i=0;i<n;i++)h+='<i class="'+(i<d.booked?(i>=d.goal?'over':'on'):'')+'"></i>';return '<span class="pips" aria-hidden="true">'+h+'</span>'};
+const tally=ps=>{const t={};ps.forEach(p=>(t[p.system]=t[p.system]||[]).push(p));return Object.entries(t)};
+
+const LEG='<div class="legend"><span><i class="sw open"></i>Open</span><span><i class="sw full"></i>Full</span><span><i class="sw off"></i>No cases</span><span class="num">Booked / goal</span></div>';
+function viewCal(){
+  const next=['N','S','M'].filter(k=>S.site==='all'||k===S.site).map(k=>{const d=KEYS.map(x=>DAYS[x]).find(d=>d.site===k&&!d.off&&d.iso>=TODAY&&d.booked<d.goal);
+    return d?'<button data-day="'+d.iso+'"><b>'+SITES[k].n+'</b><span class="num">'+DOW[pd(d.iso).getDay()].slice(0,3)+', '+shortDate(d.iso)+'</span><span class="o num">'+(d.goal-d.booked)+' open</span></button>':''}).join('');
+  const months=['2026-10','2026-11','2026-12','2027-01','2027-02','2027-03'];
+  const mi=months.indexOf(S.month);
+  const tabs=months.map(m=>'<button data-month="'+m+'" aria-pressed="'+(m===S.month)+'">'+MON[+m.slice(5)-1].slice(0,3)+' '+m.slice(0,4)+'</button>').join('');
+  const [y,mo]=S.month.split('-').map(Number), first=new Date(y,mo-1,1), start=new Date(first);
+  start.setDate(1-((first.getDay()+6)%7));
+  let cells='';
+  if(S.site!=='all'){
+    KEYS.filter(k=>DAYS[k].site===S.site).forEach(k=>{const d=DAYS[k],st=status(d),t=k===TODAY?' today':'',dn='<span class="dn num">'+DOW[pd(k).getDay()].slice(0,3)+' '+shortDate(k)+'</span>';
+      if(d.off){cells+='<div class="cell off'+t+'">'+dn+'<span class="st">'+d.note+'</span></div>';return}
+      cells+='<button class="cell '+st.k+(k<TODAY?' past':'')+t+'" data-day="'+k+'" aria-label="'+longDate(k)+', '+d.booked+' booked of '+d.goal+', '+st.t+'">'+dn+(d.note?'<span class="site">'+d.note+'</span>':'')+'<span class="bg num">'+d.booked+'<small> / '+d.goal+'</small></span>'+pips(d)+'<span class="st">'+(k<TODAY?'Done':st.t)+'</span></button>'});
+    return (next?'<div class="next"><span class="lab">Next open</span>'+next+'</div>':'')+'<div class="bar"><div class="lab">'+SITES[S.site].f+' &middot; October 2026 to March 2027</div>'+LEG+'</div><div class="cal loc">'+cells+'</div>'+(cells?'':'<div class="slot">No surgery days in the October 7, 2026 snapshot</div>');
+  }
+  for(let w=0;w<6;w++){const mon=new Date(start);mon.setDate(start.getDate()+w*7);
+    const wk=[0,1,2,3,4].map(i=>{const x=new Date(mon);x.setDate(mon.getDate()+i);return x});
+    if(!wk.some(x=>x.getMonth()===mo-1))continue;
+    wk.forEach(x=>{const k=iso(x),d=DAYS[k],inM=x.getMonth()===mo-1,t=k===TODAY?' today':'';
+      if(!inM){cells+='<div class="cell out"></div>';return}
+      if(!d){cells+=S.role==='office'&&k>=TODAY?'<button class="cell blank'+t+'" data-newcase="'+k+'" aria-label="Add case on '+longDate(k)+'"><span class="dn num">'+x.getDate()+'</span><span class="add">Add case</span></button>':'<div class="cell blank'+t+'"><span class="dn num">'+x.getDate()+'</span></div>';return}
+      const st=status(d),past=k<TODAY?' past':'';
+      if(d.off){cells+='<div class="cell off'+t+'"><span class="dn num">'+x.getDate()+'</span><span class="site">'+(d.site==='A'?'':SITES[d.site].s)+'</span><span class="st">'+d.note+'</span></div>';return}
+      cells+='<button class="cell '+st.k+past+t+'" data-day="'+k+'" aria-label="'+longDate(k)+', '+SITES[d.site].n+', '+d.booked+' booked of '+d.goal+', '+st.t+'"><span class="dn num">'+x.getDate()+'</span><span class="site">'+SITES[d.site].s+'</span><span class="bg num">'+d.booked+'<small> / '+d.goal+'</small></span>'+pips(d)+'<span class="st">'+(k<TODAY?'Done':st.t)+'</span></button>';
+    });
+  }
+  return (next?'<div class="next"><span class="lab">Next open</span>'+next+'</div>':'')+''+
+   '<div class="bar"><div class="monthnav"><button class="ghost" data-month="'+(months[mi-1]||'')+'" aria-label="Previous month"'+(mi>0?'':' disabled')+'>&#8592;</button><h2>'+MON[+S.month.slice(5)-1]+' '+S.month.slice(0,4)+'</h2><button class="ghost" data-month="'+(months[mi+1]||'')+'" aria-label="Next month"'+(mi<months.length-1?'':' disabled')+'>&#8594;</button></div>'+
+   LEG+'</div>'+
+   '<div class="cal">'+['Mon','Tue','Wed','Thu','Fri'].map(d=>'<div class="dow">'+d+'</div>').join('')+cells+'</div>';
+}
+
+function viewList(){
+  if(S.role==='office'){
+    const o=overdue();
+    return '<div class="cases">'+(o.map(([d,p,l])=>'<button class="rowbtn" data-go="'+p.id+'|'+d.iso+'"><span class="stack"><span class="lab">Surgery '+shortDate(d.iso)+' &middot; '+SITES[d.site].n+'</span><span class="who">'+esc(p.name)+'</span><span class="proc">'+p.proc+'</span><span class="num">'+p.phone+'</span></span><span class="stack">'+l.map(it=>'<span class="due">'+it.label+' &middot; due '+shortDate(dueIso(p,it))+'</span>').join('')+'</span></button>').join('')||'<div class="slot">Nothing overdue</div>')+'</div>';
+  }
+  const end=pd(TODAY);end.setDate(end.getDate()+21);const lim=iso(end);
+  return '<div class="lab">Next three weeks</div><div class="cases">'+upcoming().filter(inSite).filter(d=>d.iso<=lim&&d.booked).map(d=>{const ps=patients(d),fl=ps.filter(p=>p.flag).length,ro=ps.filter(p=>p.robot==='ROSA').length;
+    return '<button class="rowbtn" data-day="'+d.iso+'"><span class="stack"><span class="lab">'+SITES[d.site].n+'</span><span class="who">'+longDate(d.iso).replace(/, \d{4}$/,'')+'</span><span class="num">'+d.booked+' cases</span>'+(fl?'<span class="tag">'+fl+' late add or change</span>':'')+'</span><span class="stack num">'+tally(ps).map(([k,v])=>'<span><b>'+v.length+'</b> '+k+'</span>').join('')+'<span><b>'+ro+'</b> ROSA cases</span></span></button>'}).join('')+'</div>';
+}
+
+function viewDay(){
+  const d=DAYS[S.iso], ps=patients(d), st=status(d), live=KEYS.filter(k=>!DAYS[k].off&&inSite(DAYS[k])), i=live.indexOf(S.iso);
+  const ready=ps.filter(p=>!left(p)).length, z=S.role==='zimmer', off=S.role==='office', sx=S.role==='surgery';
+  const rows=ps.map((p,ix0)=>{const n=left(p),op=!!S.open[p.id];
+    const groups=ROLES[S.role].g.map(g=>{const its=p.items.map((it,ix)=>[it,ix]).filter(([it])=>it.g===g);if(!its.length)return '';
+      return '<div class="stack"><span class="lab">'+g+'</span><div class="chk">'+its.map(([it,ix])=>{const inner='<span class="box">'+(it.done?'&#10003;':'')+'</span><span>'+it.label+'</span><span class="due">'+(it.done?'Done':(late(p,it)?'Overdue ':'Due ')+shortDate(dueIso(p,it)))+'</span>';
+        return off?'<button class="'+(it.done?'done':'')+'" data-tog="'+p.id+'|'+ix+'" aria-pressed="'+it.done+'">'+inner+'</button>':'<div class="ro '+(it.done?'done':'')+'">'+inner+'</div>'}).join('')+'</div></div>'}).join('');
+    const f=(a,b,c)=>'<div><span>'+a+'</span><b'+(c?' class="num"':'')+'>'+b+'</b></div>';
+    const facts='<div class="stack"><span class="lab">Case</span><div class="facts">'+f('Procedure',p.proc)+f('Implant',p.system)+f('Planned sizes',p.sizes,1)+f('Robot',p.robot)+
+      (sx?f('Anesthesia',p.anes)+f('Positioning',p.pos)+f('Equipment',p.equip)+f('Allergies',p.allergy)+f('Blood thinner plan',p.thin):'')+
+      (off?f('Age',p.age,1)+f('Phone',p.phone,1)+f('Contact note',p.note):'')+'</div></div>';
+    const tgt=off?upcoming().filter(t=>t.iso!==d.iso&&t.iso>TODAY&&t.booked<t.goal):[];
+    const move=off&&d.iso>=TODAY?'<div class="stack"><label class="lab" for="mv-'+p.id+'">Move case</label><div class="form"><select id="mv-'+p.id+'">'+tgt.map(t=>'<option value="'+t.iso+'">'+shortDate(t.iso)+' &middot; '+SITES[t.site].n+' &middot; '+(t.goal-t.booked)+' open</option>').join('')+'</select><button class="act" data-move="'+p.id+'">Move</button></div></div>':'';
+    return '<div class="case"><button data-pt="'+p.id+'" aria-expanded="'+op+'"><span class="t num">'+caseTime(ix0)+'<small>Case '+(ix0+1)+'</small></span><span><span class="who">'+(z?p.ini:esc(p.name))+'</span>'+(p.flag?' <span class="tag">'+p.flag+'</span>':'')+'<br><span class="proc">'+p.proc+(z?' &middot; '+p.system:'')+'</span></span><span class="pill '+(n?'todo':'ready')+'">'+(n?n+' to complete':'Ready')+'</span><span class="chev" aria-hidden="true">&#9656;</span></button>'+(op?'<div class="detail">'+facts+groups+move+'</div>':'')+'</div>'}).join('');
+  let slots='';
+  for(let k=d.booked;k<d.goal;k++){
+    const first=k===d.booked&&off&&d.iso>=TODAY;
+    if(first&&S.booking)slots+='<div class="slot"><span>Book slot '+(k+1)+' of '+d.goal+'</span><div class="form"><input id="bk-name" type="text" placeholder="Patient name" aria-label="Patient name" autocomplete="off"><select id="bk-side" aria-label="Side"><option>Right</option><option>Left</option></select><select id="bk-proc" aria-label="Procedure">'+PROCS.map((p,ix)=>'<option value="'+ix+'">'+p[0]+'</option>').join('')+'</select><button class="act" data-add="1">Add case</button><button class="ghost" data-cancel="1">Cancel</button></div></div>';
+    else slots+='<div class="slot"><span>Open slot '+(k+1)+' of '+d.goal+'</span>'+(first?'<button class="act" data-book="1">Book this slot</button>':'')+'</div>';
+  }
+  const trays=z&&ps.length?'<div class="dayhead"><div class="stack" style="flex:1;min-width:0"><span class="lab">Trays and implants to bring</span><div class="facts">'+tally(ps).map(([k,v])=>'<div><span><b class="num">'+v.length+'</b> '+k+'</span><b class="num">'+v.map(p=>p.ini+' '+p.sizes).join('<br>')+'</b></div>').join('')+'<div><span>ROSA cases</span><b class="num">'+ps.filter(p=>p.robot==='ROSA').length+'</b></div></div></div></div>':'';
+  return '<div class="navrow"><button class="ghost" data-back="1">&#8592; Calendar</button><span class="seg"><button class="ghost" data-day="'+(live[i-1]||'')+'"'+(i>0?'':' disabled')+'>&#8592; Previous day</button><button class="ghost" data-day="'+(live[i+1]||'')+'"'+(i<live.length-1?'':' disabled')+'>Next day &#8594;</button></span></div>'+
+   (S.msg?'<div class="msg" role="status">'+S.msg+'</div>':'')+
+   '<div class="dayhead"><div class="stack"><span class="lab">'+SITES[d.site].n+' &middot; '+SITES[d.site].f+(d.note?' &middot; '+d.note:'')+'</span><h2>'+longDate(d.iso)+'</h2>'+pips(d)+'</div>'+
+   '<div class="stats num"><div class="stat stack"><span class="lab">Booked</span><b>'+d.booked+' of '+d.goal+'</b></div><div class="stat stack"><span class="lab">Status</span><b>'+st.t+'</b></div><div class="stat stack"><span class="lab">Ready</span><b>'+ready+' of '+ps.length+'</b></div></div></div>'+
+   trays+'<div class="cases">'+rows+slots+'</div>';
+}
+
+function render(){
+  const roles=Object.entries(ROLES).map(([k,r])=>'<button data-role="'+k+'" aria-pressed="'+(k===S.role)+'">'+r.n+'</button>').join('');
+  const locs=[['all','All locations'],['N','Northland'],['S','St. Joseph'],['M','Mosaic'],['L','Saint Luke North']].map(([k,n])=>'<button data-site="'+k+'" aria-pressed="'+(k===S.site)+'">'+n+'</button>').join('');
+  const R=ROLES[S.role], can=S.role==='office'?'Can book, move and check off':'Read only';
+  const pages=R.list?'<div class="seg" role="group" aria-label="Page"><button data-page="cal" aria-pressed="'+(S.page!=='list')+'">Calendar</button><button data-page="list" aria-pressed="'+(S.page==='list')+'">'+R.list+(S.role==='office'?' <span class="num">('+overdue().length+')</span>':'')+'</button></div>':'';
+  const roleOpts=Object.entries(ROLES).map(([k,r])=>'<option value="'+k+'"'+(k===S.role?' selected':'')+'>'+r.n+'</option>').join('');
+  const locOpts=[['all','All locations'],['N','Northland'],['S','St. Joseph'],['M','Mosaic'],['L','Saint Luke North']].map(([k,n])=>'<option value="'+k+'"'+(k===S.site?' selected':'')+'>'+n+'</option>').join('');
+  const a=S.adding, addBtn=S.role==='office'?'<button class="act" data-newcase="">Add case</button>':'';
+  const addForm=a&&S.role==='office'?'<div class="slot"><span>Add case</span><div class="form"><input id="ad-date" type="date" aria-label="Surgery date" min="'+TODAY+'" max="2027-03-31" value="'+a.iso+'"><select id="ad-site" aria-label="Location"><option value="">Location</option>'+['N','S','M','L'].map(k=>'<option value="'+k+'"'+(a.site===k?' selected':'')+'>'+SITES[k].n+'</option>').join('')+'</select><input id="ad-name" type="text" placeholder="Patient name" aria-label="Patient name" autocomplete="off" value="'+esc(a.name)+'"><select id="ad-side" aria-label="Side"><option'+(a.side==='Right'?' selected':'')+'>Right</option><option'+(a.side==='Left'?' selected':'')+'>Left</option></select><select id="ad-proc" aria-label="Procedure">'+PROCS.map((p,ix)=>'<option value="'+ix+'"'+(a.proc===ix?' selected':'')+'>'+p[0]+'</option>').join('')+'</select><button class="act" data-addcase="1">Add case</button><button class="ghost" data-canceladd="1">Cancel</button></div>'+(S.err?'<div class="err" role="alert">'+S.err+'</div>':'')+'</div>':'';
+  document.getElementById('app').innerHTML='<div class="bar"><div class="form"><span class="pair"><label class="lab" for="sel-role">View</label><select id="sel-role">'+roleOpts+'</select></span><span class="pair"><label class="lab" for="sel-site">Location</label><select id="sel-site">'+locOpts+'</select></span></div><div class="form">'+pages+addBtn+'</div></div>'+addForm+
+   (S.page==='cal'?viewCal():S.page==='list'?viewList():viewDay())+'<div class="foot">Counts from the October 7, 2026 booking snapshot. Patients and checklists are made up for this example. Changes are not saved.</div>';
+}
+const find=id=>patients(DAYS[S.iso]).find(p=>p.id===id);
+const onClick=e=>{
+  const b=e.target.closest('button');if(!b||b.disabled)return;const ds=b.dataset;let keep=false;
+  if(ds.role){S.role=ds.role;if(S.page==='list'&&!ROLES[S.role].list)S.page='cal';S.booking=false;S.adding=null}
+  else if(ds.site){S.site=ds.site;if(S.page==='day'&&!inSite(DAYS[S.iso]))S.page='cal'}
+  else if(ds.newcase!=null){const d0=DAYS[ds.newcase];S.adding={iso:ds.newcase,site:d0&&d0.site!=='A'?d0.site:'',name:'',side:'Right',proc:0};S.err='';window.scrollTo(0,0)}
+  else if(ds.canceladd){S.adding=null;S.err=''}
+  else if(ds.addcase){const g=id=>document.getElementById(id).value,a=S.adding={iso:g('ad-date'),site:g('ad-site'),name:g('ad-name').trim(),side:g('ad-side'),proc:+g('ad-proc')};
+    let d=DAYS[a.iso];const wd=a.iso?pd(a.iso).getDay():1;
+    S.err=!a.iso?'Choose a date':a.iso<TODAY?'Choose today or a later date':a.iso>'2027-03-31'?'Choose a date through March 2027':(wd===0||wd===6)?'Choose a weekday':d&&d.off?'No cases on '+shortDate(a.iso)+': '+d.note:d&&a.site&&d.site!=='A'&&d.site!==a.site?shortDate(a.iso)+' is a '+SITES[d.site].n+' day':!d&&!a.site?'Choose a location':!a.name?'Enter the patient name':'';
+    if(!S.err){
+      if(!d){d=DAYS[a.iso]={iso:a.iso,site:a.site,goal:0,booked:0,note:'Add-on',addon:true,off:false};KEYS.push(a.iso);KEYS.sort()}
+      const p=mk(d,rng(Date.now()),0,{name:a.name,proc:a.proc,side:a.side,flag:(pd(a.iso)-pd(TODAY))/864e5<15?'Late add':''});
+      patients(d).push(p);d.booked++;if(d.addon||d.site==='A')d.goal=d.booked;
+      S.adding=null;S.page='day';S.iso=a.iso;S.month=a.iso.slice(0,7);S.open[p.id]=true;if(!inSite(d))S.site='all';
+      S.msg='Booked '+esc(a.name)+' on '+longDate(a.iso)+' at '+SITES[d.site].n;keep=true;window.scrollTo(0,0)}}
+  else if(ds.page)S.page=ds.page;
+  else if(ds.month)S.month=ds.month;
+  else if(ds.day){S.page='day';S.iso=ds.day;S.month=ds.day.slice(0,7);S.booking=false;window.scrollTo(0,0)}
+  else if(ds.go){const [id,day]=ds.go.split('|');S.page='day';S.iso=day;S.month=day.slice(0,7);S.open[id]=true;window.scrollTo(0,0)}
+  else if(ds.back)S.page='cal';
+  else if(ds.pt)S.open[ds.pt]=!S.open[ds.pt];
+  else if(ds.tog){const [id,ix]=ds.tog.split('|');const it=find(id).items[ix];it.done=!it.done}
+  else if(ds.book){S.booking=true}
+  else if(ds.cancel){S.booking=false}
+  else if(ds.add){const el=document.getElementById('bk-name'),name=el.value.trim();if(!name){el.focus();return}
+    const d=DAYS[S.iso],days=(pd(d.iso)-pd(TODAY))/864e5;
+    const p=mk(d,rng(Date.now()),0,{name,proc:+document.getElementById('bk-proc').value,side:document.getElementById('bk-side').value,flag:days<15?'Late add':''});
+    patients(d).push(p);d.booked++;S.booking=false;S.open[p.id]=true;S.msg='Booked '+esc(name)+' as case '+d.booked;keep=true}
+  else if(ds.move){const sel=document.getElementById('mv-'+ds.move);if(!sel||!sel.value)return;
+    const from=DAYS[S.iso],to=DAYS[sel.value],list=patients(from),p=find(ds.move);
+    list.splice(list.indexOf(p),1);from.booked--;patients(to).push(p);to.booked++;p.day=to.iso;
+    if((pd(to.iso)-pd(TODAY))/864e5<15)p.flag='Late add';
+    S.msg='Moved '+esc(p.name)+' to '+longDate(to.iso)+' at '+SITES[to.site].n;keep=true}
+  else return;
+  if(!keep)S.msg='';
+  render();
+  if(ds.book){const el=document.getElementById('bk-name');if(el)el.focus()}
+  if(ds.newcase!=null){const el=document.getElementById(ds.newcase?'ad-name':'ad-date');if(el)el.focus()}
+};
+const app=document.getElementById('app');
+app.addEventListener('click',onClick);
+app.addEventListener('change',e=>{const t=e.target,k=t.id==='sel-role'?'role':t.id==='sel-site'?'site':'';if(!k)return;onClick({target:{closest:()=>({dataset:{[k]:t.value}})}});const el=document.getElementById(t.id);if(el)el.focus()});
+render();
+</script>
+</body>
+</html>
