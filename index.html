@@ -239,17 +239,12 @@ function viewCal(){
   const [y,mo]=S.month.split('-').map(Number), first=new Date(y,mo-1,1), start=new Date(first);
   start.setDate(1-((first.getDay()+6)%7));
   let cells='';
-  if(S.site!=='all'){
-    KEYS.filter(k=>DAYS[k].site===S.site).forEach(k=>{const d=DAYS[k],st=status(d),t=k===TODAY?' today':'',dn='<span class="dn num">'+DOW[pd(k).getDay()].slice(0,3)+' '+shortDate(k)+'</span>';
-      if(d.off){cells+='<div class="cell off'+t+'">'+dn+'<span class="st">'+d.note+'</span></div>';return}
-      cells+='<button class="cell '+st.k+(k<TODAY?' past':'')+t+'" data-day="'+k+'" aria-label="'+longDate(k)+', '+bk(d)+', '+st.t+'">'+dn+(d.note?'<span class="site">'+d.note+'</span>':'')+'<span class="bg num">'+d.booked+gsm(d)+'</span>'+pips(d)+'<span class="st">'+(k<TODAY?'Done':st.t)+'</span></button>'});
-    return '<div class="bar"><div class="lab">'+SITES[S.site].f+' &middot; October 2026 to March 2027</div>'+AB+'</div><div class="cal loc">'+cells+'</div>'+(cells?LEG:'<div class="slot">No surgery days in the October 7, 2026 snapshot</div>');
-  }
   for(let w=0;w<6;w++){const mon=new Date(start);mon.setDate(start.getDate()+w*7);
     const wk=[0,1,2,3,4].map(i=>{const x=new Date(mon);x.setDate(mon.getDate()+i);return x});
     if(!wk.some(x=>x.getMonth()===mo-1))continue;
     wk.forEach(x=>{const k=iso(x),d=DAYS[k],inM=x.getMonth()===mo-1,t=k===TODAY?' today':'';
       if(!inM){cells+='<div class="cell out"></div>';return}
+      if(d&&S.site!=='all'&&d.site!==S.site&&d.site!=='A'){cells+='<div class="cell blank'+t+'"><span class="dn num">'+x.getDate()+'</span></div>';return}
       if(!d){cells+=S.role==='osmc'&&k>=TODAY?'<button class="cell blank'+t+'" data-newcase="'+k+'" aria-label="Add case on '+longDate(k)+'"><span class="dn num">'+x.getDate()+'</span><span class="add">Add case</span></button>':'<div class="cell blank'+t+'"><span class="dn num">'+x.getDate()+'</span></div>';return}
       const st=status(d),past=k<TODAY?' past':'';
       if(d.off){cells+='<div class="cell off'+t+'"><span class="dn num">'+x.getDate()+'</span><span class="site">'+(d.site==='A'?'':SITES[d.site].s)+'</span><span class="st">'+d.note+'</span></div>';return}
